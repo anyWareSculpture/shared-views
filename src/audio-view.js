@@ -29,6 +29,7 @@ const _ = require('lodash');
 
 const SculptureStore = require('@anyware/game-logic/lib/sculpture-store');
 const GAMES = require('@anyware/game-logic/lib/constants/games');
+const {TrackedPanels} = require('@anyware/game-logic/lib/utils/panel-group');
 import {Sound, VCFSound} from './audio-api';
 
 export default class AudioView {
@@ -134,8 +135,10 @@ export default class AudioView {
         };
       }
 
-      const statusSound = statusSounds[changes.status];
-      if (statusSound) statusSound.play();
+      if (statusSounds) {
+        const statusSound = statusSounds[changes.status];
+        if (statusSound) statusSound.play();
+      }
     }
   }
 
@@ -145,7 +148,45 @@ export default class AudioView {
       return;
     }
     
+    /*
+      Mole game sounds:
+      o If a panel got activated (changes.lights.<stripId>.panels.<panelId>.active === true)
+        changes.mole.panels.<id> == STATE_IGNORED: Just turned -> success?
+        state.mole.panels.<id> == STATE_OFF: failure
+     */
     if (this.store.isPlayingMoleGame) {
+      // If a panel got activated (changes.lights.<stripId>.panels.<panelId>.active === true)
+      for (let stripId in lightChanges) for (let panelId in lightChanges[stripId].panels) {
+        const panelChange = lightChanges[stripId].panels[panelId];
+        if (panelChange.active === true) {
+          const panelkey = `${stripId},${panelId}`;
+          if (changes.mole && changes.mole.panels) {
+            const state = changes.mole.panels[panelkey];
+            if (state == TrackedPanels.STATE_IGNORED) { // Panel was turned -> success
+              this.sounds.mole.success.play();
+            }
+          }
+          else {
+            const state = this.store.data.get('mole').get('panels').get(panelkey);
+            if (!state || state === TrackedPanels.STATE_OFF) {
+              this.sounds.mole.failure.play();
+            }
+          }
+        }
+        else if (panelChange.intensity > 90) {
+          this.sounds.mole.panels[stripId][panelId].play();
+        }
+      }
+    }
+/*
+      if (changes.mole && changes.mole.panels) {
+        const panels = changes.mole.panels;
+        for (val of panels) {
+          if (val == TrackedPanels.STATE_IGNORED) {
+            this.sounds.mole.success.play();
+          }
+        }
+      }
       const lightArray = this.lightArray;
       for (let stripId of Object.keys(lightChanges)) {
         const panels = lightChanges[stripId].panels;
@@ -154,28 +195,26 @@ export default class AudioView {
           if (panelChanges.intensity > 90) {
             this.sounds.mole.panels[stripId][panelId].play();
           }
+          // User-activated panel, 3 options:
+          // o Success: Panel is active
+          // o Failure: Panel is not active
+          // o Ignore: Panel has already turned
           if (panelChanges.hasOwnProperty("active")) {
             if (panelChanges.active) {
               const molegame = this.store.currentGameLogic;
               const moledata = this.store.data.get('mole');
-              const currentTarget = molegame.getTargetPanels(moledata.get('targetIndex'));
-
-              // FIXME: The problem here is that currentTarget gets removed by the MoleGameLogic before this event reaches us. We may have to transport this info in the changes object as that's currently not done.
-
-              if (currentTarget.has(stripId, panelId)) {
+              const state = moledata.get('panels').getPanelState(stripId, panelId);
+              if (state === TrackedPanels.STATE_IGNORED) { // 
                 this.sounds.mole.success.play();
               }
-              else {
+              else if (state === TrackedPanels.STATE_OFF) {
                 this.sounds.mole.failure.play();
-//                console.log(`Play ${stripId}:${panelId}`);
-//                this.panelsounds[stripId][panelId].play();
               }
             }
           }
-          
         }
       }
-    }
+*/
     if (this.store.isPlayingSimonGame) {
       const lightArray = this.lightArray;
       for (let stripId of Object.keys(lightChanges)) {
