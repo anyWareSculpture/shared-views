@@ -7,13 +7,14 @@
 ![codecov.io](http://codecov.io/github/anyWareSculpture/shared-views/branch.svg?branch=master)
 
 ## Usage
-This library models the game logic shared by all anyWare implementations.
+
+This repository contains shared views used by multiple anyWare runtimes.
 
 When installed (or built), modules are stored in a `lib/` directory. Thus when requiring files, make sure that you are adding that before the path of the file you are requiring. In addition, ensure that you are requiring each individual file. `require('@anyware/shared-views')` alone will not work.
 
 Example of correct usage:
 
-    const MyThing = require('@anyware/shared-views/lib/things/my-thing');
+    const AudioView = require('@anyware/shared-views/lib/audio-view);
 
 This was implemented this way for a variety of reasons:
 
