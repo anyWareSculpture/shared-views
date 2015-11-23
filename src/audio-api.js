@@ -118,7 +118,6 @@ export class VCFSound extends Sound {
   }
 }
 
-let decode;
 function initContext() {
   if (typeof AudioContext !== "undefined") {
     return new AudioContext();
