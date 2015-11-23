@@ -23,7 +23,9 @@ export class Sound {
     this.head = this.gain;
   }
 
-  // Returns a promise to fully load all needed assets for this sound
+  /**
+   *  Returns a promise to fully load all needed assets for this sound
+   */
   load() {
     console.log('loading ' + this.url);
     // FIXME: Node support:
@@ -81,9 +83,9 @@ export class Sound {
   }
 }
 
-/*
-  Sound with a VCF (Voltage Controlled Filter). The VCF is currently hardcoded since we only use it once
-*/
+/**
+ * Sound with a VCF (Voltage Controlled Filter). The VCF is currently hardcoded since we only use it once
+ */
 export class VCFSound extends Sound {
   constructor({ url, fadeIn = 0, fadeOut = fadeIn, name = path.basename(url, '.wav') } = {}) {
     super({url, loop: true, fadeIn, fadeOut, name});

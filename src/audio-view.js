@@ -37,7 +37,9 @@ export default class AudioView {
     this.config = config;
   }
 
-  // Loads all sounds, calls callback([err]) when done
+  /**
+   * Loads all sounds, calls callback([err]) when done
+   */
   load(callback) {
     // Maps logical sound identifiers to filenames. We'll load these sounds next.
     this.sounds = {
@@ -73,8 +75,10 @@ export default class AudioView {
       .catch(callback.bind(null));
   }
 
-  // Traverses sound config objects and replaces nodes with valid, loaded, sounds
-  // populates the given promises array with promises of loaded sounds
+  /**
+   * Traverses sound config objects and replaces nodes with valid, loaded, sounds
+   * populates the given promises array with promises of loaded sounds
+   */
   _traverse(node, promises) {
     for (let key in node) {
       const value = node[key];
