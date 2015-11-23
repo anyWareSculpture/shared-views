@@ -97,6 +97,97 @@ export default class AudioView {
   }
 
   _handleChanges(changes) {
-    // FIXME: Turn changes in sculpture store into audio here
+    if (changes.currentGame === GAMES.HANDSHAKE) this.sounds.alone.ambient.play();
+
+    this._handleHandshakeChanges(changes);
+    this._handleStatusChanges(changes);
+    this._handleLightChanges(changes);
+  }
+
+  _handleHandshakeChanges(changes) {
+    if (changes.handshakes) {
+      // Did someone shake my hand?
+      if (changes.handshakes[this.config.username]) {
+        this.sounds.alone.ambient.stop();
+        this.sounds.alone.handshake.play();
+      }
+    }
+  }
+
+  _handleStatusChanges(changes) {
+    if (changes.status) {
+      let statusSounds;
+
+      if (this.store.isPlayingMoleGame) {
+        statusSounds = {
+          [SculptureStore.STATUS_SUCCESS]: this.sounds.mole.success,
+          [SculptureStore.STATUS_FAILURE]: this.sounds.mole.failure
+        };
+      }
+      if (this.store.isPlayingSimonGame) {
+        statusSounds = {
+          [SculptureStore.STATUS_SUCCESS]: this.sounds.simon.success,
+          [SculptureStore.STATUS_FAILURE]: this.sounds.simon.failure
+        };
+      }
+
+      const statusSound = statusSounds[changes.status];
+      if (statusSound) statusSound.play();
+    }
+  }
+
+  _handleLightChanges(changes) {
+    const lightChanges = changes.lights;
+    if (!lightChanges || !this.store.isReady) {
+      return;
+    }
+    
+    if (this.store.isPlayingMoleGame) {
+      const lightArray = this.lightArray;
+      for (let stripId of Object.keys(lightChanges)) {
+        const panels = lightChanges[stripId].panels;
+        for (let panelId of Object.keys(panels)) {
+          const panelChanges = panels[panelId];
+          if (panelChanges.intensity > 90) {
+            this.sounds.mole.panels[stripId][panelId].play();
+          }
+          if (panelChanges.hasOwnProperty("active")) {
+            if (panelChanges.active) {
+              const molegame = this.store.currentGameLogic;
+              const moledata = this.store.data.get('mole');
+              const currentTarget = molegame.getTargetPanels(moledata.get('targetIndex'));
+
+              // FIXME: The problem here is that currentTarget gets removed by the MoleGameLogic before this event reaches us. We may have to transport this info in the changes object as that's currently not done.
+
+              if (currentTarget.has(stripId, panelId)) {
+                this.sounds.mole.success.play();
+              }
+              else {
+                this.sounds.mole.failure.play();
+//                console.log(`Play ${stripId}:${panelId}`);
+//                this.panelsounds[stripId][panelId].play();
+              }
+            }
+          }
+          
+        }
+      }
+    }
+    if (this.store.isPlayingSimonGame) {
+      const lightArray = this.lightArray;
+      for (let stripId of Object.keys(lightChanges)) {
+        const panels = lightChanges[stripId].panels;
+        for (let panelId of Object.keys(panels)) {
+          const panelChanges = panels[panelId];
+          if (panelChanges.active || panelChanges.intensity > 90) {
+            this.sounds.simon.panels[stripId][panelId].play();
+          }
+        }
+      }      
+    }
+  }
+
+  get lightArray() {
+    return this.store.data.get('lights');
   }
 }
