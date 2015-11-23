@@ -62,9 +62,9 @@ export default class AudioView {
 
     // Traverse this.sounds and replace the filenames with valid sound objects.
     this._promises = [];
-    this._traverse(this.sounds);
+    this._traverse(this.sounds, this._promises);
 
-    // _loadSound() will create promises. We call the callback once all promises resolve
+    // _traverse() will create promises. We call the callback once all promises resolve
     console.log(`${this._promises.length} promises`);
     Promise.all(this._promises)
       // Don't listen to events until we've loaded all sounds
@@ -74,22 +74,16 @@ export default class AudioView {
   }
 
   // Traverses sound config objects and replaces nodes with valid, loaded, sounds
-  _traverse(node) {
+  // populates the given promises array with promises of loaded sounds
+  _traverse(node, promises) {
     for (let key in node) {
       const value = node[key];
       let sound;
       if (typeof value === 'string') sound = node[key] = new Sound({url: value});
       else if (value instanceof Sound) sound = value;
-      if (sound) this._loadSound(sound);
-      else this._traverse(value);
+      if (sound) promises.push(sound.load());
+      else this._traverse(value, promises);
     }
-  }
-
-  // Returns a promise to provide a comple, usable sound.
-  _loadSound(sound) {
-    const promise = sound.load();
-    this._promises.push(promise);
-    return promise;
   }
 
   _handleChanges(changes) {
