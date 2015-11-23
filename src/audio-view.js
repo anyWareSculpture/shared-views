@@ -91,10 +91,6 @@ export default class AudioView {
   }
 
   _handleChanges(changes) {
-    if (this._animating) {
-      return;
-    }
-
     if (changes.currentGame === GAMES.HANDSHAKE) this.sounds.alone.ambient.play();
 
     this._handleHandshakeChanges(changes);
