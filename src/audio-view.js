@@ -1,29 +1,43 @@
-/*
-  Game event               Sound                      Logic
-
-  Enter alone mode         Alone_Mode/Pulse_amb_loop  FIXME
-  Handshake                Alone_Mode/Hand_Shake_01   changes.handshakes (Set of bool)
-
-Mole:
-  Panel activated          Game_01/G01_LED_XX
-  Active panel touched     Game_01/G01_Success_01
-  Non-active panel touched Game_01/G01_Negative_01
-
-Disk:
-
-Simon:
-  Panel activated during pattern animation
-                           Game_03/G03_LED_XX
-  Correct panel touched
-                           Game_03/G03_LED_XX
-  Wrong panel touched
-                           Game_03/G03_Negative_01
-  Won level (after short delay)
-                           Game_03/G03_Success_01
-  Won all levels (after short delay)
-                           Game_03/G03_Light_Show_01
-
-*/
+/**
+ *  Startup or transition into Handshake game
+ *  o Start ambient sound
+ *   Handshake interaction:
+ *  o play handshake play
+ *  o stop ambient sound
+ *   Mole Game:
+ *  We have 3 sounds
+ *  1) Light activated: Panel comes on with 'neutral' color using ACTIVE_PANEL_INTENSITY
+ *  2) Success interaction: panel turn active and state == TrackedPanels.STATE_IGNORED
+ *  3) Fail interaction: panel turn active and state == TrackedPanels.STATE_OFF
+ *  Q: Sound on light deactivated? (similar to 1) but opposite)
+ *   Success animation
+ *  o Play Success sound (missing)
+ *   Transition animation to Disk Game
+ *  o For each light on event, play lighteffect sound (4 events)
+ *  o FIXME: Some sort of demo/helper to clarify interaction
+ *   Disk Game
+ *  o Start ambient sound (FIXME: Fading vs. loop, new sound from Alain?)
+ *  o Start loop sound (loop)
+ *  o Start distance sound (loop)
+ *  o Calculate distance from success (positive and negative distance)
+ *    -> use distance to modulate pitch of distance sound
+ *  Level success animation
+ *  o On success of level 1 and 2, play success sound
+ *  o On perimeter light on event, play lighteffect sound
+ *   Success animation
+ *  o On success of level 3, play show sound
+ *  o For each light off event, play lighteffect sound (3 events)
+ *   Transition animation to Simon Game
+ *  o No sounds
+ *   Simon Game
+ *  o On animation playback, play panel sounds
+ *  o On correct local interaction, play panel sounds
+ *  o On free play, play panel sounds
+ *  o On fail local interaction, play failure sound
+ *  o On level success, play success sound
+ *   Light show and transition back to Start State
+ *  o play show sound
+ */
 
 const _ = require('lodash');
 
@@ -98,135 +112,98 @@ export default class AudioView {
   }
 
   _handleChanges(changes) {
-    if (changes.currentGame === GAMES.HANDSHAKE) this.sounds.alone.ambient.play();
-
-    this._handleHandshakeChanges(changes);
-    this._handleStatusChanges(changes);
-    this._handleLightChanges(changes);
+    if (this.store.isPlayingHandshakeGame) this._handleHandshakeGame(changes);
+    if (this.store.isPlayingMoleGame) this._handleMoleGame(changes);
+    if (this.store.isPlayingDiskGame) this._handleDiskGame(changes);
+    if (this.store.isPlayingSimonGame) this._handleSimonGame(changes);
   }
 
-  _handleHandshakeChanges(changes) {
+  _handleHandshakeGame(changes) {
+    // On startup, or when Start State becomes active, play ambient sound
+    if (changes.currentGame === GAMES.HANDSHAKE) this.sounds.alone.ambient.play();
+
     if (changes.handshakes) {
       // Did someone shake my hand?
       if (changes.handshakes[this.config.username]) {
         this.sounds.alone.ambient.stop();
         this.sounds.alone.handshake.play();
       }
+      // FIXME: Did someone else shake hands? -> dimmed sound?
     }
   }
 
-  _handleStatusChanges(changes) {
-    if (changes.status) {
-      let statusSounds;
-
-      if (this.store.isPlayingMoleGame) {
-        statusSounds = {
-          [SculptureStore.STATUS_SUCCESS]: this.sounds.mole.success,
-          [SculptureStore.STATUS_FAILURE]: this.sounds.mole.failure
-        };
-      }
-      if (this.store.isPlayingSimonGame) {
-        statusSounds = {
-          [SculptureStore.STATUS_SUCCESS]: this.sounds.simon.success,
-          [SculptureStore.STATUS_FAILURE]: this.sounds.simon.failure
-        };
-      }
-
-      if (statusSounds) {
-        const statusSound = statusSounds[changes.status];
-        if (statusSound) statusSound.play();
-      }
-    }
-  }
-
-  _handleLightChanges(changes) {
+  _handleMoleGame(changes) {
     const lightChanges = changes.lights;
-    if (!lightChanges || !this.store.isReady) {
-      return;
-    }
-    
+    if (!lightChanges || !this.store.isReady) return;
+
     /*
       Mole game sounds:
       o If a panel got activated (changes.lights.<stripId>.panels.<panelId>.active === true)
-        changes.mole.panels.<id> == STATE_IGNORED: Just turned -> success?
-        state.mole.panels.<id> == STATE_OFF: failure
-     */
-    if (this.store.isPlayingMoleGame) {
-      // If a panel got activated (changes.lights.<stripId>.panels.<panelId>.active === true)
-      for (let stripId in lightChanges) for (let panelId in lightChanges[stripId].panels) {
-        const panelChange = lightChanges[stripId].panels[panelId];
-        if (panelChange.active === true) {
-          const panelkey = `${stripId},${panelId}`;
-          if (changes.mole && changes.mole.panels) {
-            const state = changes.mole.panels[panelkey];
-            if (state == TrackedPanels.STATE_IGNORED) { // Panel was turned -> success
-              this.sounds.mole.success.play();
-            }
-          }
-          else {
-            const state = this.store.data.get('mole').get('panels').get(panelkey);
-            if (!state || state === TrackedPanels.STATE_OFF) {
-              this.sounds.mole.failure.play();
-            }
-          }
-        }
-        else if (panelChange.intensity > 90) {
-          this.sounds.mole.panels[stripId][panelId].play();
-        }
-      }
-    }
-/*
-      if (changes.mole && changes.mole.panels) {
-        const panels = changes.mole.panels;
-        for (val of panels) {
-          if (val == TrackedPanels.STATE_IGNORED) {
+      changes.mole.panels.<id> == STATE_IGNORED: Just turned -> success?
+      state.mole.panels.<id> == STATE_OFF: failure
+    */
+    // If a panel got activated (changes.lights.<stripId>.panels.<panelId>.active === true)
+    for (let stripId in lightChanges) for (let panelId in lightChanges[stripId].panels) {
+      const panelChange = lightChanges[stripId].panels[panelId];
+      if (panelChange.active === true) {
+        const panelkey = `${stripId},${panelId}`;
+        if (changes.mole && changes.mole.panels) {
+          const state = changes.mole.panels[panelkey];
+          if (state == TrackedPanels.STATE_IGNORED) { // Panel was turned -> success
             this.sounds.mole.success.play();
           }
         }
-      }
-      const lightArray = this.lightArray;
-      for (let stripId of Object.keys(lightChanges)) {
-        const panels = lightChanges[stripId].panels;
-        for (let panelId of Object.keys(panels)) {
-          const panelChanges = panels[panelId];
-          if (panelChanges.intensity > 90) {
-            this.sounds.mole.panels[stripId][panelId].play();
-          }
-          // User-activated panel, 3 options:
-          // o Success: Panel is active
-          // o Failure: Panel is not active
-          // o Ignore: Panel has already turned
-          if (panelChanges.hasOwnProperty("active")) {
-            if (panelChanges.active) {
-              const molegame = this.store.currentGameLogic;
-              const moledata = this.store.data.get('mole');
-              const state = moledata.get('panels').getPanelState(stripId, panelId);
-              if (state === TrackedPanels.STATE_IGNORED) { // 
-                this.sounds.mole.success.play();
-              }
-              else if (state === TrackedPanels.STATE_OFF) {
-                this.sounds.mole.failure.play();
-              }
-            }
+        else {
+          const state = this.store.data.get('mole').get('panels').get(panelkey);
+          if (!state || state === TrackedPanels.STATE_OFF) {
+            this.sounds.mole.failure.play();
           }
         }
       }
-*/
-    if (this.store.isPlayingSimonGame) {
-      const lightArray = this.lightArray;
-      for (let stripId of Object.keys(lightChanges)) {
-        const panels = lightChanges[stripId].panels;
-        for (let panelId of Object.keys(panels)) {
-          const panelChanges = panels[panelId];
-          if (panelChanges.active || panelChanges.intensity > 90) {
-            this.sounds.simon.panels[stripId][panelId].play();
-          }
-        }
-      }      
+      else if (panelChange.intensity > 90) {
+        this.sounds.mole.panels[stripId][panelId].play();
+      }
     }
   }
 
-  get lightArray() {
-    return this.store.data.get('lights');
+  _handleDiskGame(changes) {
+    // On start of disk game
+    // FIXME: Is transition part of the disk game?
+    if (changes.currentGame === GAMES.DISK) {
+      this.sounds.disk.ambient.play();
+      this.sounds.disk.loop.play();
+      this.sounds.disk.distance.play();
+    }
+
+    if (changes.disks) {
+      const disks = this.store.data.get('disks');
+      const diskgame = this.store.currentGameLogic;
+      const [totaldistance, totalsum] = diskgame.getWinDistance(disks);
+      console.log(`dist: ${totaldistance}, sum: ${totalsum}`);
+      // totaldistance = 0->540
+      const factor = totaldistance / 540 * 3 + 1;
+      const rate = (totalsum < 0) ? 1/factor : factor;
+      
+      this.sounds.disk.distance.source.playbackRate.value = 2*factor;
+    }
+    // FIXME:
+    // o Calculate distance from success (positive and negative distance)
+    //    -> use distance to modulate pitch of distance sound
+    // FIXME level success and final success
+  }
+
+  _handleSimonGame(changes) {
+    const lightChanges = changes.lights;
+    if (!lightChanges || !this.store.isReady) return;
+
+    if (changes.status === SculptureStore.STATUS_SUCCESS) this.sounds.simon.success.play();
+    if (changes.status === SculptureStore.STATUS_FAILURE) this.sounds.simon.failure.play();
+
+    for (let stripId in lightChanges) for (let panelId in lightChanges[stripId].panels) {
+      const panelChange = lightChanges[stripId].panels[panelId];
+      if (panelChanges.active || panelChanges.intensity > 90) {
+        this.sounds.simon.panels[stripId][panelId].play();
+      }
+    }
   }
 }
