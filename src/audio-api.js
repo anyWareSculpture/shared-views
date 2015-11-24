@@ -9,14 +9,18 @@ const context = initContext();
 let isNode = false;
 
 export class Sound {
-  constructor({ url, loop = false, fadeIn = 0, fadeOut = fadeIn, name = path.basename(url, '.wav') } = {}) {
+  constructor({ url, loop = false, fadeIn = 0, fadeOut = fadeIn, rate = 1, gain = 1, name = path.basename(url, '.wav') } = {}) {
 
     assert(url);
 
     this.url = url;
-    this.loop = loop;
-    this.fadeIn = fadeIn;
-    this.fadeOut = fadeOut;
+    this.params = {
+      loop,
+      fadeIn,
+      fadeOut,
+      rate,
+      gain
+    };
     this.name = name;
     this.gain = context.createGain();
     if (!isNode) this.gain.connect(context.destination);
@@ -43,7 +47,7 @@ export class Sound {
       xhr.send();
     })
       .then(buffer => {
-        console.log(`loaded ${this.url} - ${buffer.length} bytes`);
+        console.log(`loaded ${this.url} - ${buffer.byteLength} bytes`);
         if (!buffer) console.log(`Buffer error: ${this.url}`);
         return context.decodeAudioData(buffer);
       })
@@ -55,27 +59,29 @@ export class Sound {
   }
 
   play() {
-    if (this.fadeIn > 0) {
+    if (this.params.fadeIn > 0) {
       this.gain.gain.setValueAtTime(0, context.currentTime);
-      this.gain.gain.linearRampToValueAtTime(1, context.currentTime + this.fadeIn);
+      this.gain.gain.linearRampToValueAtTime(this.params.gain, context.currentTime + this.params.fadeIn);
     }
 
     this.source = context.createBufferSource();
     this.source.buffer = this.buffer;
-    this.source.loop = this.loop;
+    this.source.loop = this.params.loop;
+    if (this.params.rate != 1) this.source.playbackRate.value = this.params.rate;
+    if (this.params.gain != 1) this.gain.gain.value = this.params.gain;
     this.source.connect(this.head);
     if (isNode) this.gain.connect(context.destination);
     this.source.start(context.currentTime);
   }
 
   stop() {
-    if (this.fadeOut > 0) {
+    if (this.params.fadeOut > 0) {
       var volume = this.gain.gain.value;
       this.gain.gain.cancelScheduledValues(context.currentTime);
       this.gain.gain.setValueAtTime(volume, context.currentTime);
-      this.gain.gain.linearRampToValueAtTime(0,context.currentTime + volume*this.fadeOut);
-      this.gain.gain.setValueAtTime(1, context.currentTime + volume*this.fadeOut);
-      if (this.source) this.source.stop(context.currentTime + volume*this.fadeOut);
+      this.gain.gain.linearRampToValueAtTime(0,context.currentTime + volume*this.params.fadeOut);
+      this.gain.gain.setValueAtTime(1, context.currentTime + volume*this.params.fadeOut);
+      if (this.source) this.source.stop(context.currentTime + volume*this.params.fadeOut);
     }
     else {
       if (this.source) this.source.stop();
