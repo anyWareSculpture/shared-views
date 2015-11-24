@@ -53,8 +53,9 @@ export default class AudioView {
         panels: [0,1,2].map(stripId => _.range(10).map(panelId => `sounds/Game_01/G01_LED_${("0"+(stripId*10+panelId+1)).slice(-2)}.wav`))
       },
       disk: {
-        ambient: 'sounds/Game_02/G02_Amb_Breath_Loop_01.wav',
-        loop: 'sounds/Game_02/G02_Disk_Loop_01.wav',
+        ambient: new Sound({url: 'sounds/Game_02/G02_Amb_Breath_Loop_01.wav', loop: true}),
+        loop: new Sound({url: 'sounds/Game_02/G02_Disk_Loop_Ref_01.wav', loop: true, rate: 2, gain: 0.3, fadeIn: 10}),
+        distance: new Sound({url: 'sounds/Game_02/G02_Disk_Loop_01.wav', loop: true, rate: 2, gain: 0.5, fadeIn: 10}),
         lighteffect: 'sounds/Game_02/G02_Lights_01.wav',
         success: 'sounds/Game_02/G02_Success_01.wav',
         show: 'sounds/Game_02/G02_Success_final_01.wav'
