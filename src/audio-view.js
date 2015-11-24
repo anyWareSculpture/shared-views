@@ -37,6 +37,9 @@ export default class AudioView {
     this.config = config;
   }
 
+  reset() {
+  }
+  
   /**
    * Loads all sounds, calls callback([err]) when done
    */
