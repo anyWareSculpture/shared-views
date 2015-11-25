@@ -196,15 +196,15 @@ export default class AudioView {
   }
 
   _handleSimonGame(changes) {
-    const lightChanges = changes.lights;
-    if (!lightChanges || !this.store.isReady) return;
-
     if (changes.status === SculptureStore.STATUS_SUCCESS) this.sounds.simon.success.play();
     if (changes.status === SculptureStore.STATUS_FAILURE) this.sounds.simon.failure.play();
 
+    const lightChanges = changes.lights;
+    if (!lightChanges || !this.store.isReady) return;
+
     for (let stripId in lightChanges) for (let panelId in lightChanges[stripId].panels) {
       const panelChange = lightChanges[stripId].panels[panelId];
-      if (panelChanges.active || panelChanges.intensity > 90) {
+      if (panelChange.active || panelChange.intensity > 90) {
         this.sounds.simon.panels[stripId][panelId].play();
       }
     }
