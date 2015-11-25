@@ -170,6 +170,18 @@ export default class AudioView {
   }
 
   _handleDiskGame(changes) {
+    if (changes.status === SculptureStore.STATUS_SUCCESS) {
+      this.sounds.disk.loop.stop();
+      this.sounds.disk.distance.stop();
+      
+      if (this.store.data.get('disk').get('level') >= this.config.DISK_GAME.TARGET_POSITIONS_LEVELS.length) {
+        this.sounds.disk.show.play();
+      }
+      else {
+        this.sounds.disk.success.play();
+      }
+    }
+
     // On start of disk game
     // FIXME: Is transition part of the disk game?
     if (changes.currentGame === GAMES.DISK) {
@@ -177,21 +189,27 @@ export default class AudioView {
       this.sounds.disk.loop.play();
       this.sounds.disk.distance.play();
     }
-
+    
+    // On start of level
+    if (changes.hasOwnProperty('disk') &&
+        changes.disk.hasOwnProperty('level') &&
+        changes.disk.level < this.config.DISK_GAME.TARGET_POSITIONS_LEVELS.length) {
+      this.sounds.disk.loop.play();
+      this.sounds.disk.distance.play();
+    }
+    
     if (changes.disks) {
       const disks = this.store.data.get('disks');
       const diskgame = this.store.currentGameLogic;
-      const [totaldistance, totalsum] = diskgame.getWinDistance(disks);
-      console.log(`dist: ${totaldistance}, sum: ${totalsum}`);
-      // totaldistance = 0->540
-      const factor = totaldistance / 540 * 3 + 1;
-      const rate = (totalsum < 0) ? 1/factor : factor;
-      
-      this.sounds.disk.distance.source.playbackRate.value = 2*factor;
+      const score = diskgame.getScore(disks);
+      console.log(`score: ${score}`);
+      // score = -540 -> 540
+      const factor = Math.abs(score) / 540 * 3 + 1;
+      const rate = Math.sign(score) < 0 ? 1/factor : factor;
+
+      // FIXME: Set our rate property instead and deal with audio node stuff internally
+      this.sounds.disk.distance.source.playbackRate.value = 2*rate;
     }
-    // FIXME:
-    // o Calculate distance from success (positive and negative distance)
-    //    -> use distance to modulate pitch of distance sound
     // FIXME level success and final success
   }
 
