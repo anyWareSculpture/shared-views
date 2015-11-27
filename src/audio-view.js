@@ -44,6 +44,7 @@ const _ = require('lodash');
 const SculptureStore = require('@anyware/game-logic/lib/sculpture-store');
 const GAMES = require('@anyware/game-logic/lib/constants/games');
 const {TrackedPanels} = require('@anyware/game-logic/lib/utils/panel-group');
+const Disk = require('@anyware/game-logic/lib/utils/disk');
 import {Sound, VCFSound} from './audio-api';
 
 export default class AudioView {
@@ -72,8 +73,9 @@ export default class AudioView {
       },
       disk: {
         ambient: new Sound({url: 'sounds/Game_02/G02_Amb_Breath_Loop_01.wav', loop: true}),
-        loop: new Sound({url: 'sounds/Game_02/G02_Disk_Loop_Ref_01.wav', loop: true, rate: 2, gain: 0.3, fadeIn: 10}),
-        distance: new Sound({url: 'sounds/Game_02/G02_Disk_Loop_01.wav', loop: true, rate: 2, gain: 0.5, fadeIn: 10}),
+        disk2: new Sound({url: 'sounds/Game_02/G02_Disk_Loop_C2.wav', loop: true, rate: 1, loopFreq: 2, gain: 0.5, fadeIn: 2}),
+        disk1: new Sound({url: 'sounds/Game_02/G02_Disk_Loop_Eb2.wav', loop: true, rate: 1, loopFreq: 1, gain: 0.5, fadeIn: 2}),
+        disk0: new Sound({url: 'sounds/Game_02/G02_Disk_Loop_G2.wav', loop: true, rate: 1, loopFreq: 1, gain: 0.5, fadeIn: 2}),
         lighteffect: 'sounds/Game_02/G02_Lights_01.wav',
         success: 'sounds/Game_02/G02_Success_01.wav',
         show: 'sounds/Game_02/G02_Success_final_01.wav'
@@ -171,12 +173,14 @@ export default class AudioView {
 
   _handleDiskGame(changes) {
     if (changes.status === SculptureStore.STATUS_SUCCESS) {
-      this.sounds.disk.loop.stop();
-      this.sounds.disk.distance.stop();
-      
-      if (this.store.data.get('disk').get('level') >= this.config.DISK_GAME.TARGET_POSITIONS_LEVELS.length) {
+      // End of game
+      if (this.store.data.get('disk').get('level') >= this.config.DISK_GAME.LEVELS.length) {
+        this.sounds.disk.disk0.stop();
+        this.sounds.disk.disk1.stop();
+        this.sounds.disk.disk2.stop();
         this.sounds.disk.show.play();
       }
+      // End of level
       else {
         this.sounds.disk.success.play();
       }
@@ -185,32 +189,62 @@ export default class AudioView {
     // On start of disk game
     // FIXME: Is transition part of the disk game?
     if (changes.currentGame === GAMES.DISK) {
-      this.sounds.disk.ambient.play();
-      this.sounds.disk.loop.play();
-      this.sounds.disk.distance.play();
+      // Start all sounds in silent mode
+      this.sounds.disk.disk0.play({gain: 0});
+      this.sounds.disk.disk1.play({gain: 0});
+      this.sounds.disk.disk2.play({gain: 0});
     }
     
     // On start of level
     if (changes.hasOwnProperty('disk') &&
         changes.disk.hasOwnProperty('level') &&
-        changes.disk.level < this.config.DISK_GAME.TARGET_POSITIONS_LEVELS.length) {
-      this.sounds.disk.loop.play();
-      this.sounds.disk.distance.play();
+        changes.disk.level < this.config.DISK_GAME.LEVELS.length) {
     }
     
     if (changes.disks) {
       const disks = this.store.data.get('disks');
+
+      for (let disk of ['disk0', 'disk1', 'disk2']) {
+        if (changes.disks.hasOwnProperty(disk) && 
+            changes.disks[disk].hasOwnProperty('direction') &&
+            disks.get(disk).get('state') === Disk.STATE_READY) {
+          if (changes.disks[disk].direction === Disk.STOPPED) this.sounds.disk[disk].fadeOut({delay: 1});
+          else this.sounds.disk[disk].fadeIn();
+        }
+      }
+
       const diskgame = this.store.currentGameLogic;
       const score = diskgame.getScore(disks);
-      console.log(`score: ${score}`);
-      // score = -540 -> 540
-      const factor = Math.abs(score) / 540 * 3 + 1;
-      const rate = Math.sign(score) < 0 ? 1/factor : factor;
-
-      // FIXME: Set our rate property instead and deal with audio node stuff internally
-      this.sounds.disk.distance.source.playbackRate.value = 2*rate;
+      //console.log(`score: ${score}`);
+      // score = 0 -> 540
+      const factor = score / 540 * 3 + 1;
+      const rate = 1/factor;
+      const pulseFreq = this._calcFreq(score);
+      // FIXME: Set our loopFreq property instead and deal with audio node stuff internally
+      //console.log(`pulseFreq: ${pulseFreq}`);
+      if (this.sounds.disk.disk0.source) this.sounds.disk.disk0.source.loopEnd = (pulseFreq === 0 ? 0 : 1/pulseFreq);
+      if (this.sounds.disk.disk1.source) this.sounds.disk.disk1.source.loopEnd = (pulseFreq === 0 ? 0 : 1/pulseFreq);
+      if (this.sounds.disk.disk2.source) this.sounds.disk.disk2.source.loopEnd = (pulseFreq === 0 ? 0 : 1/pulseFreq);
     }
     // FIXME level success and final success
+  }
+
+  _calcFreq(score) {
+    function map(value, in_min, in_max, out_min, out_max) {
+      return (value - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
+    }
+    if (score > 200) {
+      return map(score, 540, 200, 0.5, 1);
+    }
+    else if (score > 100) {
+      return map(score, 200, 100, 1, 4);
+    }
+    else if (score > 50) {
+      return map(score, 100, 50, 4, 10);
+    }
+    else {
+      return map(score, 50, 0, 10, 60);
+    }
   }
 
   _handleSimonGame(changes) {
