@@ -165,9 +165,11 @@ export default class AudioView {
           }
         }
         else {
-          const state = this.store.data.get('mole').get('panels').get(panelkey);
-          if (!state || state === TrackedPanels.STATE_OFF) {
-            this.sounds.mole.failure.play();
+          if (this.config.MOLE_GAME.ENABLE_FAILURE_SOUND) {
+            const state = this.store.data.get('mole').get('panels').get(panelkey);
+            if (!state || state === TrackedPanels.STATE_OFF) {
+              this.sounds.mole.failure.play();
+            }
           }
         }
       }
