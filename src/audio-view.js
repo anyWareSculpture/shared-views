@@ -208,7 +208,7 @@ export default class AudioView {
         if (changes.disks.hasOwnProperty(disk) && 
             changes.disks[disk].hasOwnProperty('direction') &&
             disks.get(disk).get('state') === Disk.STATE_READY) {
-          if (changes.disks[disk].direction === Disk.STOPPED) this.sounds.disk[disk].fadeOut({delay: 1});
+          if (changes.disks[disk].direction === Disk.STOPPED) this.sounds.disk[disk].fadeOut({delay: 3});
           else this.sounds.disk[disk].fadeIn();
         }
       }
