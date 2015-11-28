@@ -128,8 +128,9 @@ export class Sound {
  * Sound with a VCF (Voltage Controlled Filter). The VCF is currently hardcoded since we only use it once
  */
 export class VCFSound extends Sound {
-  constructor({ url, fadeIn = 0, fadeOut = fadeIn, name = path.basename(url, '.wav') } = {}) {
-    super({url, loop: true, fadeIn, fadeOut, name});
+  constructor({ url, lfoFreq = 0.333, fadeIn = 0, fadeOut = fadeIn, gain = 1, name = path.basename(url, '.wav') } = {}) {
+    super({url, loop: true, fadeIn, fadeOut, gain, name});
+    this.params.lfoFreq = lfoFreq;
   }
 
   play() {
@@ -148,7 +149,7 @@ export class VCFSound extends Sound {
 
     var lfo = context.createOscillator();
     lfo.type = 'sine';
-    lfo.frequency.value = 0.333;
+    lfo.frequency.value = this.params.lfoFreq;
     lfogain.connect(lowpass.frequency);
     lfo.connect(lfogain);
     lfo.start(context.currentTime);
