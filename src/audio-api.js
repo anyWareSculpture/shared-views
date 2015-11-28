@@ -33,7 +33,7 @@ export class Sound {
    *  Returns a promise to fully load all needed assets for this sound
    */
   load() {
-    console.log('loading ' + this.url);
+    // console.log('loading ' + this.url);
     // FIXME: Node support:
     //    if (isNode) fetch = promisify(fs.readFile)(__dirname + '/../' + this.url).then(buffer => buffer);
 
@@ -49,12 +49,12 @@ export class Sound {
       xhr.send();
     })
       .then(buffer => {
-        console.log(`loaded ${this.url} - ${buffer.byteLength} bytes`);
+        // console.log(`loaded ${this.url} - ${buffer.byteLength} bytes`);
         if (!buffer) console.log(`Buffer error: ${this.url}`);
         return context.decodeAudioData(buffer);
       })
       .then(soundBuffer => {
-        console.log(`decoded ${this.url}`);
+        // console.log(`decoded ${this.url}`);
         this.buffer = soundBuffer;
         return this;
       });
