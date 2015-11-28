@@ -87,9 +87,9 @@ export default class AudioView {
         show: 'sounds/Game_02/G02_Success_final_01.wav'
       },
       simon: {
-        panels: [0,1,2].map(stripId => _.range(10).map(panelId => `sounds/Game_03/G03_LED_${("0"+(stripId*10+panelId+1)).slice(-2)}.wav`)),
-        success: 'sounds/Game_03/G03_Success_01.wav',
-        failure: 'sounds/Game_03/G03_Negative_01.wav',
+        panels: [0,1,2].map(stripId => _.range(10).map(panelId => new Sound({url: `sounds/Game_03/G03_LED_${("0"+(stripId*10+panelId+1)).slice(-2)}.wav`, gain: 0.5}))),
+        success: new Sound({url: 'sounds/Game_03/G03_Success_01.wav', gain: 0.5}),
+        failure: new Sound({url: 'sounds/Game_03/G03_Negative_01.wav', gain: 0.5}),
         show: 'sounds/Game_03/G03_Light_Show_01.wav'
       }
     };
