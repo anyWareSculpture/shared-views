@@ -60,16 +60,22 @@ export default class AudioView {
    * Loads all sounds, calls callback([err]) when done
    */
   load(callback) {
+    let lfoFreq = 1/3;
+    if (this.config.hasOwnProperty('HANDSHAKE_HARDWARE') &&
+        this.config.HANDSHAKE_HARDWARE.hasOwnProperty('PULSE_DELAY')) {
+      lfoFreq = 1000/this.config.HANDSHAKE_HARDWARE.PULSE_DELAY;
+    }
+
     // Maps logical sound identifiers to filenames. We'll load these sounds next.
     this.sounds = {
       alone: {
-        ambient: new VCFSound({url: 'sounds/Alone_Mode/Pulse_Amb_Loop.wav', fadeIn: 3}),
-        handshake: 'sounds/Alone_Mode/Hand_Shake_01.wav'
+        ambient: new VCFSound({url: 'sounds/Alone_Mode/Pulse_Amb_Loop.wav', lfoFreq, fadeIn: 3, gain: 0.4}),
+        handshake: new Sound({url: 'sounds/Alone_Mode/Hand_Shake_01.wav'})
       },
       mole: {
-        success: 'sounds/Game_01/G01_Success_01.wav',
-        failure: 'sounds/Game_01/G01_Negative_01.wav',
-        panels: [0,1,2].map(stripId => _.range(10).map(panelId => `sounds/Game_01/G01_LED_${("0"+(stripId*10+panelId+1)).slice(-2)}.wav`))
+        success: new Sound({url: 'sounds/Game_01/G01_Success_01.wav', gain: 0.5}),
+        failure: new Sound({url: 'sounds/Game_01/G01_Negative_01.wav', gain: 0.5}),
+        panels: [0,1,2].map(stripId => _.range(10).map(panelId => new Sound({url: `sounds/Game_01/G01_LED_${("0"+(stripId*10+panelId+1)).slice(-2)}.wav`, gain: 0.33})))
       },
       disk: {
         ambient: new Sound({url: 'sounds/Game_02/G02_Amb_Breath_Loop_01.wav', loop: true}),
