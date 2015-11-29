@@ -256,7 +256,11 @@ export default class AudioView {
   }
 
   _handleSimonGame(changes) {
-    if (changes.status === SculptureStore.STATUS_SUCCESS) this.sounds.simon.success.play();
+    const simongame = this.store.currentGameLogic;
+    if (changes.status === SculptureStore.STATUS_SUCCESS) {
+      if (simongame.complete) this.sounds.simon.show.play();
+      else this.sounds.simon.success.play();
+    }
     if (changes.status === SculptureStore.STATUS_FAILURE) this.sounds.simon.failure.play();
 
     const lightChanges = changes.lights;
