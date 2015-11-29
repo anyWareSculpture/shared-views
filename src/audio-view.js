@@ -222,19 +222,32 @@ export default class AudioView {
       }
 
       const diskgame = this.store.currentGameLogic;
+      for (let disk of ['disk0', 'disk1', 'disk2']) {
+        const score = diskgame.getDiskScore(disk);
+        const pulseFreq = this._calcSingleFreq(score);
+        console.log(`score: ${score} pulsefreq: ${pulseFreq}`);
+        if (this.sounds.disk[disk].source) this.sounds.disk[disk].source.loopEnd = (pulseFreq === 0 ? 0 : 1/pulseFreq);
+      }
+      /* code for global score sound
       const score = diskgame.getScore(disks);
       //console.log(`score: ${score}`);
       // score = 0 -> 540
-      const factor = score / 540 * 3 + 1;
-      const rate = 1/factor;
       const pulseFreq = this._calcFreq(score);
       // FIXME: Set our loopFreq property instead and deal with audio node stuff internally
       //console.log(`pulseFreq: ${pulseFreq}`);
       if (this.sounds.disk.disk0.source) this.sounds.disk.disk0.source.loopEnd = (pulseFreq === 0 ? 0 : 1/pulseFreq);
       if (this.sounds.disk.disk1.source) this.sounds.disk.disk1.source.loopEnd = (pulseFreq === 0 ? 0 : 1/pulseFreq);
       if (this.sounds.disk.disk2.source) this.sounds.disk.disk2.source.loopEnd = (pulseFreq === 0 ? 0 : 1/pulseFreq);
+      */
     }
     // FIXME level success and final success
+  }
+
+  _calcSingleFreq(score) {
+    function map(value, in_min, in_max, out_min, out_max) {
+      return (value - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
+    }
+    return map(score, 180, 0, 0.5, 5);
   }
 
   _calcFreq(score) {
