@@ -279,11 +279,19 @@ export default class AudioView {
     const lightChanges = changes.lights;
     if (!lightChanges || !this.store.isReady) return;
 
+    // FIXME: This is a hack to support lower volume on non-primary panel
     for (let stripId in lightChanges) for (let panelId in lightChanges[stripId].panels) {
       const panelChange = lightChanges[stripId].panels[panelId];
       if (panelChange.active || panelChange.intensity > 90) {
-        this.sounds.simon.panels[stripId][panelId].play();
+        this.sounds.simon.panels[stripId][panelId].play({gain: (stripId === simongame.currentStrip) ? 1 : 0.1});
       }
     }
+
+    
+    
+    
+    
+
+
   }
 }
