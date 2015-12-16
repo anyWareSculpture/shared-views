@@ -1,17 +1,13 @@
 const assert = require('assert');
 const path = require('path');
-const fs = require('fs');
 require('promise-decode-audio-data');
 
-// FIXME: Defer this to window.onload() ?
-const context = initContext();
-
+let context = null;
 let isNode = false;
 
 // FIXME: Should we cache the buffer to allow reuse of buffers using the same URL?
 export class Sound {
   constructor({ url, loop = false, fadeIn = 0, fadeOut = fadeIn, rate = 1, loopFreq = 0, gain = 1, name = path.basename(url, '.wav') } = {}) {
-
     assert(url);
 
     this.url = url;
@@ -30,7 +26,7 @@ export class Sound {
   }
 
   /**
-   *  Returns a promise to fully load all needed assets for this sound
+   *  @returns {Promise} a promise to fully load all needed assets for this sound
    */
   load() {
     // console.log('loading ' + this.url);
@@ -41,10 +37,10 @@ export class Sound {
       const xhr = new XMLHttpRequest();
       xhr.open('GET', this.url, true);
       xhr.responseType = 'arraybuffer';
-      xhr.onload = e => {
-        if (xhr.status == 200) resolve(xhr.response);
+      xhr.onload = () => {
+        if (xhr.status === 200) resolve(xhr.response);
         else reject(xhr.response);
-      }
+      };
       xhr.onerror = e => reject(e);
       xhr.send();
     })
@@ -71,9 +67,9 @@ export class Sound {
     this.source = context.createBufferSource();
     this.source.buffer = this.buffer;
     this.source.loop = params.loop;
-    if (params.rate != 1) this.source.playbackRate.value = params.rate;
+    if (params.rate !== 1) this.source.playbackRate.value = params.rate;
     this.source.loopEnd = params.loopFreq === 0 ? 0 : 1/params.loopFreq;
-    if (params.gain != 1) this.gain.gain.value = params.gain;
+    if (params.gain !== 1) this.gain.gain.value = params.gain;
     this.source.connect(this.head);
     if (isNode) this.gain.connect(context.destination);
     this.source.start(context.currentTime);
@@ -83,10 +79,10 @@ export class Sound {
   stop(parameters = {}) {
     const params = Object.assign({}, this.params, parameters);
     if (params.fadeOut > 0) {
-      var volume = this.gain.gain.value;
+      const volume = this.gain.gain.value;
       this.gain.gain.cancelScheduledValues(context.currentTime);
       this.gain.gain.setValueAtTime(volume, context.currentTime);
-      this.gain.gain.linearRampToValueAtTime(0,context.currentTime + volume*params.fadeOut);
+      this.gain.gain.linearRampToValueAtTime(0, context.currentTime + volume*params.fadeOut);
       this.gain.gain.setValueAtTime(1, context.currentTime + volume*params.fadeOut);
       if (this.source) this.source.stop(context.currentTime + volume*params.fadeOut);
     }
@@ -98,7 +94,7 @@ export class Sound {
   // Must start first
   fadeIn() {
     if (this.params.fadeIn > 0) {
-      var volume = this.gain.gain.value;
+      const volume = this.gain.gain.value;
       this.gain.gain.cancelScheduledValues(context.currentTime);
       this.gain.gain.setValueAtTime(volume, context.currentTime);
       this.gain.gain.linearRampToValueAtTime(this.params.gain, context.currentTime + this.params.fadeIn);
@@ -111,7 +107,7 @@ export class Sound {
   // Will wait <delay> seconds before starting to fade out
   fadeOut({delay = 0} = {}) {
     if (this.params.fadeOut > 0) {
-      var volume = this.gain.gain.value;
+      const volume = this.gain.gain.value;
       this.gain.gain.cancelScheduledValues(context.currentTime);
       this.gain.gain.setValueAtTime(volume, context.currentTime);
       this.gain.gain.setValueAtTime(volume, context.currentTime + delay);
@@ -121,7 +117,6 @@ export class Sound {
       this.gain.gain.value = 0;
     }
   }
-  
 }
 
 /**
@@ -144,10 +139,10 @@ export class VCFSound extends Sound {
     lowpass.connect(this.head);
     this.head = lowpass;
 
-    var lfogain = context.createGain();
+    const lfogain = context.createGain();
     lfogain.gain.value = 2000;
 
-    var lfo = context.createOscillator();
+    const lfo = context.createOscillator();
     lfo.type = 'sine';
     lfo.frequency.value = this.params.lfoFreq;
     lfogain.connect(lowpass.frequency);
@@ -162,10 +157,11 @@ export class VCFSound extends Sound {
   }
 }
 
-function initContext() {
+export function init() {
   if (typeof AudioContext !== "undefined") {
     return new AudioContext();
-  } else if (typeof NodeAudioContext !== "undefined") {
+  }
+  else if (typeof NodeAudioContext !== "undefined") {
     isNode = true;
     return new NodeAudioContext();
   }

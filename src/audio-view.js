@@ -48,16 +48,17 @@ const Disk = require('@anyware/game-logic/lib/utils/disk');
 import {Sound, VCFSound} from './audio-api';
 
 export default class AudioView {
-  constructor(store, config, dispatcher) {
+  constructor(store, config) {
     this.store = store;
     this.config = config;
   }
 
   reset() {
   }
-  
+
   /**
-   * Loads all sounds, calls callback([err]) when done
+   * Loads all sounds.
+   * @param {function(err)} callback Called when done
    */
   load(callback) {
     let lfoFreq = 1/3;
@@ -75,7 +76,7 @@ export default class AudioView {
       mole: {
         success: new Sound({url: 'sounds/Game_01/G01_Success_01.wav', gain: 0.5}),
         failure: new Sound({url: 'sounds/Game_01/G01_Negative_01.wav', gain: 0.5}),
-        panels: [0,1,2].map(stripId => _.range(10).map(panelId => new Sound({url: `sounds/Game_01/G01_LED_${("0"+(stripId*10+panelId+1)).slice(-2)}.wav`, gain: 0.33})))
+        panels: [0, 1, 2].map(stripId => _.range(10).map(panelId => new Sound({url: `sounds/Game_01/G01_LED_${("0"+(stripId*10+panelId+1)).slice(-2)}.wav`, gain: 0.33})))
       },
       disk: {
         ambient: new Sound({url: 'sounds/Game_02/G02_Amb_Breath_Loop_01.wav', loop: true}),
@@ -87,7 +88,7 @@ export default class AudioView {
         show: new Sound({url: 'sounds/Game_02/G02_Success_final_01.wav', gain: 0.5})
       },
       simon: {
-        panels: [0,1,2].map(stripId => _.range(10).map(panelId => new Sound({url: `sounds/Game_03/G03_LED_${("0"+(stripId*10+panelId+1)).slice(-2)}.wav`, gain: 0.5}))),
+        panels: [0, 1, 2].map(stripId => _.range(10).map(panelId => new Sound({url: `sounds/Game_03/G03_LED_${("0"+(stripId*10+panelId+1)).slice(-2)}.wav`, gain: 0.5}))),
         success: new Sound({url: 'sounds/Game_03/G03_Success_01.wav', gain: 0.5}),
         failure: new Sound({url: 'sounds/Game_03/G03_Negative_01.wav', gain: 0.5}),
         show: new Sound({url: 'sounds/Game_03/G03_Light_Show_01.wav', gain: 1})
@@ -107,7 +108,7 @@ export default class AudioView {
       .catch(callback.bind(null));
   }
 
-  /**
+  /*
    * Traverses sound config objects and replaces nodes with valid, loaded, sounds
    * populates the given promises array with promises of loaded sounds
    */
@@ -154,27 +155,29 @@ export default class AudioView {
       state.mole.panels.<id> == STATE_OFF: failure
     */
     // If a panel got activated (changes.lights.<stripId>.panels.<panelId>.active === true)
-    for (let stripId in lightChanges) for (let panelId in lightChanges[stripId].panels) {
-      const panelChange = lightChanges[stripId].panels[panelId];
-      if (panelChange.active === true) {
-        const panelkey = `${stripId},${panelId}`;
-        if (changes.mole && changes.mole.panels) {
-          const state = changes.mole.panels[panelkey];
-          if (state == TrackedPanels.STATE_IGNORED) { // Panel was turned -> success
-            this.sounds.mole.success.play();
+    for (let stripId in lightChanges) {
+      for (let panelId in lightChanges[stripId].panels) {
+        const panelChange = lightChanges[stripId].panels[panelId];
+        if (panelChange.active === true) {
+          const panelkey = `${stripId},${panelId}`;
+          if (changes.mole && changes.mole.panels) {
+            const state = changes.mole.panels[panelkey];
+            if (state === TrackedPanels.STATE_IGNORED) { // Panel was turned -> success
+              this.sounds.mole.success.play();
+            }
           }
-        }
-        else {
-          if (this.config.MOLE_GAME.ENABLE_FAILURE_SOUND) {
-            const state = this.store.data.get('mole').get('panels').get(panelkey);
-            if (!state || state === TrackedPanels.STATE_OFF) {
-              this.sounds.mole.failure.play();
+          else {
+            if (this.config.MOLE_GAME.ENABLE_FAILURE_SOUND) {
+              const state = this.store.data.get('mole').get('panels').get(panelkey);
+              if (!state || state === TrackedPanels.STATE_OFF) {
+                this.sounds.mole.failure.play();
+              }
             }
           }
         }
-      }
-      else if (panelChange.intensity > 90) {
-        this.sounds.mole.panels[stripId][panelId].play();
+        else if (panelChange.intensity > 90) {
+          this.sounds.mole.panels[stripId][panelId].play();
+        }
       }
     }
   }
@@ -202,21 +205,21 @@ export default class AudioView {
       this.sounds.disk.disk1.play({gain: 0});
       this.sounds.disk.disk2.play({gain: 0});
     }
-    
+
     // On start of level
-    if (changes.hasOwnProperty('disk') &&
-        changes.disk.hasOwnProperty('level') &&
-        changes.disk.level < this.config.DISK_GAME.LEVELS.length) {
-    }
-    
+//    if (changes.hasOwnProperty('disk') &&
+//        changes.disk.hasOwnProperty('level') &&
+//        changes.disk.level < this.config.DISK_GAME.LEVELS.length) {
+//    }
+
     if (changes.disks) {
       const disks = this.store.data.get('disks');
 
       for (let disk of ['disk0', 'disk1', 'disk2']) {
-        if (changes.disks.hasOwnProperty(disk) && 
+        if (changes.disks.hasOwnProperty(disk) &&
             changes.disks[disk].hasOwnProperty('direction') &&
             disks.get(disk).get('state') === Disk.STATE_READY) {
-          if (changes.disks[disk].direction === Disk.STOPPED) this.sounds.disk[disk].fadeOut({delay: 3});
+          if (changes.disks[disk].direction === Disk.STOPPED) this.sounds.disk[disk].fadeOut();
           else this.sounds.disk[disk].fadeIn();
         }
       }
@@ -244,15 +247,20 @@ export default class AudioView {
   }
 
   _calcSingleFreq(score) {
-    function map(value, in_min, in_max, out_min, out_max) {
-      return (value - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
+    function map(value, inMin, inMax, outMin, outMax) {
+      return (value - inMin) * (outMax - outMin) / (inMax - inMin) + outMin;
     }
-    return map(score, 180, 0, 0.5, 5);
+    if (score > 45) {
+      return map(score, 180, 45, 0.5, 3);
+    }
+    else {
+      return map(score, 45, 0, 3, 10);
+    }
   }
 
   _calcFreq(score) {
-    function map(value, in_min, in_max, out_min, out_max) {
-      return (value - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
+    function map(value, inMin, inMax, outMin, outMax) {
+      return (value - inMin) * (outMax - outMin) / (inMax - inMin) + outMin;
     }
     if (score > 200) {
       return map(score, 540, 200, 0.5, 1);
@@ -280,18 +288,13 @@ export default class AudioView {
     if (!lightChanges || !this.store.isReady) return;
 
     // FIXME: This is a hack to support lower volume on non-primary panel
-    for (let stripId in lightChanges) for (let panelId in lightChanges[stripId].panels) {
-      const panelChange = lightChanges[stripId].panels[panelId];
-      if (panelChange.active || panelChange.intensity > 90) {
-        this.sounds.simon.panels[stripId][panelId].play({gain: (stripId === simongame.currentStrip) ? 1 : 0.1});
+    for (let stripId in lightChanges) {
+      for (let panelId in lightChanges[stripId].panels) {
+        const panelChange = lightChanges[stripId].panels[panelId];
+        if (panelChange.active || panelChange.intensity > 90) {
+          this.sounds.simon.panels[stripId][panelId].play({gain: (stripId === simongame.currentStrip) ? 1 : 0.1});
+        }
       }
     }
-
-    
-    
-    
-    
-
-
   }
 }
