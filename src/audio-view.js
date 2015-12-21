@@ -39,6 +39,7 @@
  *  o play show sound
  */
 
+const assert = require('assert');
 const _ = require('lodash');
 
 const SculptureStore = require('@anyware/game-logic/lib/sculpture-store');
@@ -95,12 +96,13 @@ export default class AudioView {
       }
     };
 
-    // Traverse this.sounds and replace the filenames with valid sound objects.
+    // Traverses this.sounds and replace the filenames with valid sound objects.
+    // Populates this._promises
     this._promises = [];
     this._traverse(this.sounds, this._promises);
 
     // _traverse() will create promises. We call the callback once all promises resolve
-    console.log(`${this._promises.length} promises`);
+    console.log(`${this._promises.length} promises created`);
     Promise.all(this._promises)
       // Don't listen to events until we've loaded all sounds
       .then(() => this.store.on(SculptureStore.EVENT_CHANGE, this._handleChanges.bind(this)))
@@ -112,12 +114,13 @@ export default class AudioView {
    * Traverses sound config objects and replaces nodes with valid, loaded, sounds
    * populates the given promises array with promises of loaded sounds
    */
-  _traverse(node, promises) {
-    for (let key in node) {
-      const value = node[key];
+  _traverse(soundconf, promises) {
+    for (let key in soundconf) {
+      const value = soundconf[key];
       let sound;
-      if (typeof value === 'string') sound = node[key] = new Sound({url: value});
+      if (typeof value === 'string') sound = soundconf[key] = new Sound({url: value});
       else if (value instanceof Sound) sound = value;
+
       if (sound) promises.push(sound.load());
       else this._traverse(value, promises);
     }

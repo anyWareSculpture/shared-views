@@ -5,7 +5,11 @@ require('promise-decode-audio-data');
 let context = null;
 let isNode = false;
 
-// FIXME: Should we cache the buffer to allow reuse of buffers using the same URL?
+// FIXME: Mostly to optimize memory usage, consider caching the buffer to allow reuse of buffers using the same URL
+
+/**
+ * Simple Sound, supports looping
+ */
 export class Sound {
   constructor({ url, loop = false, fadeIn = 0, fadeOut = fadeIn, rate = 1, loopFreq = 0, gain = 1, name = path.basename(url, '.wav') } = {}) {
     assert(url);
@@ -21,15 +25,14 @@ export class Sound {
     };
     this.name = name;
     this.gain = context.createGain();
-    if (!isNode) this.gain.connect(context.destination);
     this.head = this.gain;
+    if (!isNode) this.gain.connect(context.destination);
   }
 
   /**
    *  @returns {Promise} a promise to fully load all needed assets for this sound
    */
   load() {
-    // console.log('loading ' + this.url);
     // FIXME: Node support:
     //    if (isNode) fetch = promisify(fs.readFile)(__dirname + '/../' + this.url).then(buffer => buffer);
 
@@ -44,13 +47,13 @@ export class Sound {
       xhr.onerror = e => reject(e);
       xhr.send();
     })
-      .then(buffer => {
-        // console.log(`loaded ${this.url} - ${buffer.byteLength} bytes`);
-        if (!buffer) console.log(`Buffer error: ${this.url}`);
-        return context.decodeAudioData(buffer);
-      })
+     .then(buffer => {
+       // console.debug(`loaded ${this.url} - ${buffer.byteLength} bytes`);
+       if (!buffer) console.log(`Buffer error: ${this.url}`);
+       return context.decodeAudioData(buffer);
+     })
       .then(soundBuffer => {
-        // console.log(`decoded ${this.url}`);
+        // console.debug(`decoded ${this.url}`);
         this.buffer = soundBuffer;
         return this;
       });
@@ -120,7 +123,8 @@ export class Sound {
 }
 
 /**
- * Sound with a VCF (Voltage Controlled Filter). The VCF is currently hardcoded since we only use it once
+ * Sound with a VCF (Voltage Controlled Filter).
+ * The VCF is currently hardcoded since we only use it once
  */
 export class VCFSound extends Sound {
   constructor({ url, lfoFreq = 0.333, fadeIn = 0, fadeOut = fadeIn, gain = 1, name = path.basename(url, '.wav') } = {}) {
@@ -129,7 +133,7 @@ export class VCFSound extends Sound {
   }
 
   play() {
-    // FIXME: If running on node.js
+    // FIXME: If running on node.js we might not have BiquadFilter support
     if (!context.createBiquadFilter) return super.play();
 
     const lowpass = context.createBiquadFilter();
