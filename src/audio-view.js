@@ -44,7 +44,7 @@ const _ = require('lodash');
 
 const SculptureStore = require('@anyware/game-logic/lib/sculpture-store');
 const GAMES = require('@anyware/game-logic/lib/constants/games');
-const {TrackedPanels} = require('@anyware/game-logic/lib/utils/panel-group');
+const {TrackedPanels} = require('@anyware/game-logic/lib/utils/tracked-panels');
 const Disk = require('@anyware/game-logic/lib/utils/disk');
 import {Sound, VCFSound} from './audio-api';
 
