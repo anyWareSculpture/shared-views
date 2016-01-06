@@ -163,13 +163,14 @@ export class VCFSound extends Sound {
 
 export function init() {
   if (typeof AudioContext !== "undefined") {
-    return new AudioContext();
+    context = new AudioContext();
   }
   else if (typeof NodeAudioContext !== "undefined") {
     isNode = true;
-    return new NodeAudioContext();
+    context = new NodeAudioContext();
   }
   else {
     throw new Error('AudioContext not supported. :(');
   }
+  return context;
 }
