@@ -1,6 +1,5 @@
 const assert = require('assert');
 const path = require('path');
-require('promise-decode-audio-data');
 
 let context = null;
 let isNode = false;
